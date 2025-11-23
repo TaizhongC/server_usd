@@ -9,12 +9,20 @@
 #include <pxr/base/tf/token.h>
 #include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usd/stage.h>
+#include <pxr/usd/usdGeom/mesh.h>
 
 struct PrimDelta {
   pxr::SdfPath path;
   pxr::TfToken type;
   bool resynced = false;
   std::vector<pxr::TfToken> attrs_changed;
+};
+
+struct MeshSnapshot {
+  std::vector<float> points;           // flattened xyz
+  std::vector<int> faceVertexCounts;   // polygon counts
+  std::vector<int> faceVertexIndices;  // indices into points
+  std::vector<float> displayColor;     // flattened rgb per-face or per-vertex
 };
 
 class Scene {
@@ -25,6 +33,7 @@ public:
   void register_observed_prim(const pxr::UsdPrim& prim,
                               const std::vector<pxr::TfToken>& attrs);
   std::vector<PrimDelta> poll_deltas();
+  MeshSnapshot mesh_snapshot() const;
 
 private:
   struct TokenHash {

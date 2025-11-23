@@ -26,9 +26,31 @@ std::string encode_layers(const std::vector<std::string>& layers) {
   return payload.dump();
 }
 
+std::string encode_mesh_header(std::size_t vertex_count,
+                               std::size_t face_count) {
+  json payload;
+  payload["cmd"] = "SCENE_UPDATE";
+  payload["path"] = "/World/TestMesh";
+  payload["type"] = "mesh";
+  payload["action"] = "full_update";
+  payload["vertex_count"] = vertex_count;
+  payload["face_count"] = face_count;
+  payload["components"] = 3;
+  return payload.dump();
+}
+
+std::string encode_mesh_payload(const MeshPayload& mesh) {
+  json payload;
+  payload["points"] = mesh.points;
+  payload["counts"] = mesh.counts;
+  payload["indices"] = mesh.indices;
+  payload["colors"] = mesh.colors;
+  return payload.dump();
+}
+
 std::string encode_ack(const std::string& action) {
   json payload;
-  payload["cmd"] = "ACK";
+  payload["cmd"] = "UI_ACK";
   payload["action"] = action;
   return payload.dump();
 }

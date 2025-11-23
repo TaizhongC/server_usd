@@ -1,51 +1,29 @@
-import { initRenderer, updateMesh } from './render.js';
+import { initRenderer, updateMesh, highlightLayer, setPickHandler } from './render.js';
+import { createClient } from './net.js';
+import { createUi } from './ui.js';
 
-let socket;
 let pendingHeader = null;
-let gui;
 
-const statusEl = document.getElementById('status');
-const layerListEl = document.getElementById('layerList');
+const ui = createUi({
+  onLayerSelect: (path) => {
+    highlightLayer(path);
+    ui.setHighlightedLayer(path);
+  },
+});
 
-function setStatus(text) {
-  if (statusEl) statusEl.textContent = text;
-}
-
-function setLayers(layers) {
-  if (!layerListEl) return;
-  layerListEl.innerHTML = '';
-  if (!layers || layers.length === 0) {
-    const li = document.createElement('li');
-    li.textContent = 'No layers reported';
-    layerListEl.appendChild(li);
-    return;
+setPickHandler((path) => {
+  if (path) {
+    ui.setHighlightedLayer(path);
   }
-  layers.forEach((layer) => {
-    const li = document.createElement('li');
-    li.textContent = layer;
-    layerListEl.appendChild(li);
-  });
-}
+});
 
-function connect() {
-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  const url = `${protocol}://${window.location.host}/ws`;
-  socket = new WebSocket(url);
-  socket.binaryType = 'arraybuffer';
-
-  socket.onopen = () => setStatus('Connected');
-  socket.onerror = () => setStatus('Connection error');
-  socket.onclose = () => setStatus('Disconnected');
-  socket.onmessage = handleMessage;
-}
-
-function handleMessage(event) {
-  if (typeof event.data === 'string') {
-    handleText(event.data);
-  } else if (event.data instanceof ArrayBuffer) {
-    handleBinary(event.data);
-  }
-}
+const client = createClient({
+  onOpen: (url) => ui.setStatus(`Connected (${url})`),
+  onClose: (url) => ui.setStatus(`Disconnected (last ${url})`),
+  onError: (url) => ui.setStatus(`Connection error (${url})`),
+  onText: handleText,
+  onBinary: handleBinary,
+});
 
 function handleText(text) {
   let parsed;
@@ -57,48 +35,25 @@ function handleText(text) {
   }
 
   if (parsed.cmd === 'UI_BUILD') {
-    buildGui(parsed.controls || []);
+    // UI is static for now.
   } else if (parsed.cmd === 'SCENE_UPDATE') {
     pendingHeader = parsed;
   } else if (parsed.cmd === 'UI_ACK') {
-    setStatus(`Ack: ${parsed.action}`);
+    ui.setStatus(`Ack: ${parsed.action}`);
   } else if (parsed.cmd === 'SCENE_LAYERS') {
-    setLayers(parsed.layers || []);
+    ui.setLayers(parsed.layers || []);
   }
 }
 
 function handleBinary(buffer) {
   if (!pendingHeader) return;
   const vertices = new Float32Array(buffer);
-  updateMesh(vertices);
+  const path = pendingHeader.path || '/World/TestMesh';
+  updateMesh(path, vertices);
+  highlightLayer(path);
+  ui.setHighlightedLayer(path);
   pendingHeader = null;
 }
 
-function buildGui(controls) {
-  if (!window.lil) return;
-  if (gui) gui.destroy();
-  gui = new window.lil.GUI({ title: 'Controls' });
-
-  controls.forEach((ctrl) => {
-    if (ctrl.type === 'button') {
-      gui
-        .add({ click: () => sendAction(ctrl.action) }, 'click')
-        .name(ctrl.label || ctrl.action);
-    } else if (ctrl.type === 'slider') {
-      const params = { value: ctrl.value ?? 0 };
-      gui
-        .add(params, 'value', ctrl.min ?? 0, ctrl.max ?? 1, ctrl.step ?? 0.1)
-        .name(ctrl.label || ctrl.action)
-        .onChange((v) => sendAction(ctrl.action, v));
-    }
-  });
-}
-
-function sendAction(action, value) {
-  if (!socket || socket.readyState !== WebSocket.OPEN) return;
-  const payload = value === undefined ? { action } : { action, value };
-  socket.send(JSON.stringify(payload));
-}
-
 initRenderer();
-connect();
+client.connect();

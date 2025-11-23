@@ -66,6 +66,15 @@
       word-break: break-all;
       white-space: pre;
       font-family: Consolas, "Segoe UI Mono", Menlo, Monaco, monospace;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    #layers li:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+    #layers li.selected-layer {
+      border-color: #4da3ff;
+      box-shadow: 0 0 0 1px rgba(77, 163, 255, 0.3);
     }
     canvas {
       display: block;

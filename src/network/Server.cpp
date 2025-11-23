@@ -27,6 +27,38 @@ void log_crash(const std::string& msg) {
 }
 }  // namespace
 
+namespace {
+std::vector<float> triangulate_positions(const MeshSnapshot& mesh) {
+  std::vector<float> out;
+  const auto& pts = mesh.points;
+  const auto& counts = mesh.faceVertexCounts;
+  const auto& indices = mesh.faceVertexIndices;
+  std::size_t cursor = 0;
+  for (std::size_t face = 0; face < counts.size(); ++face) {
+    const int n = counts[face];
+    if (n < 3) {
+      cursor += static_cast<std::size_t>(n);
+      continue;
+    }
+    for (int i = 1; i + 1 < n; ++i) {
+      const int i0 = indices[cursor + 0];
+      const int i1 = indices[cursor + i];
+      const int i2 = indices[cursor + i + 1];
+      const int ids[3] = {i0, i1, i2};
+      for (int id : ids) {
+        const std::size_t base = static_cast<std::size_t>(id) * 3;
+        if (base + 2 >= pts.size()) continue;
+        out.push_back(pts[base + 0]);
+        out.push_back(pts[base + 1]);
+        out.push_back(pts[base + 2]);
+      }
+    }
+    cursor += static_cast<std::size_t>(n);
+  }
+  return out;
+}
+}  // namespace
+
 Server::Server(ServerConfig config, const Layout& layout, const Scene& scene)
     : config_(std::move(config)),
       layout_(layout),
@@ -112,6 +144,17 @@ void Server::handle_ws_open(mg_connection* c) {
   clients_.push_back(c);
   send_ui_layout(c);
   send_scene_layers(c);
+  // Send the demo mesh on connect for quick testing.
+  const auto snapshot = scene_.mesh_snapshot();
+  const auto verts = triangulate_positions(snapshot);
+  const auto header =
+      protocol::encode_mesh_header(verts.size() / 3,
+                                   snapshot.faceVertexCounts.size());
+  mg_ws_send(c, header.c_str(), header.size(), WEBSOCKET_OP_TEXT);
+  mg_ws_send(c,
+             reinterpret_cast<const char*>(verts.data()),
+             verts.size() * sizeof(float),
+             WEBSOCKET_OP_BINARY);
 }
 
 void Server::handle_ws_msg(mg_connection* c, mg_ws_message* msg) {
