@@ -38,7 +38,7 @@ void log_line(const std::string& msg) {
 }  // namespace
 
 int main() {
-  log_line("zspace_web start");
+  log_line("server_usd start");
   std::signal(SIGINT, handle_signal);
   std::signal(SIGTERM, handle_signal);
 

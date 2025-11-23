@@ -21,7 +21,7 @@ struct ServerConfig {
 
 class Server {
 public:
-  Server(ServerConfig config, Application& engine, const Layout& layout, const Scene& scene);
+  Server(ServerConfig config, Application& app, const Layout& layout, const Scene& scene);
   ~Server();
 
   bool start();
@@ -43,7 +43,7 @@ private:
   std::string websocket_address() const;
 
   ServerConfig config_;
-  Application& engine_;
+  Application& app_;
   const Layout& layout_;
   const Scene& scene_;
 

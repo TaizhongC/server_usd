@@ -32,9 +32,9 @@ void log_crash(const std::string& msg) {
 }
 }  // namespace
 
-Server::Server(ServerConfig config, Application& engine, const Layout& layout, const Scene& scene)
+Server::Server(ServerConfig config, Application& app, const Layout& layout, const Scene& scene)
     : config_(std::move(config)),
-      engine_(engine),
+      app_(app),
       layout_(layout),
       scene_(scene),
       listener_(nullptr),
@@ -131,14 +131,14 @@ void Server::handle_ws_msg(mg_connection* c, mg_ws_message* msg) {
     const std::string action = parsed.value("action", "");
 
     if (action == "generate") {
-      auto verts = engine_.generate_frame();
+      auto verts = app_.generate_frame();
       const std::string ack = protocol::build_ack(action);
       mg_ws_send(c, ack.c_str(), ack.size(), WEBSOCKET_OP_TEXT);
       broadcast_frame(verts);
     } else if (action == "speed") {
       const double v = parsed.value("value", 1.0);
-      engine_.set_speed(static_cast<float>(v));
-      auto verts = engine_.generate_frame();  // Immediately reflect new speed.
+      app_.set_speed(static_cast<float>(v));
+      auto verts = app_.generate_frame();  // Immediately reflect new speed.
       const std::string ack = protocol::build_ack(action);
       mg_ws_send(c, ack.c_str(), ack.size(), WEBSOCKET_OP_TEXT);
       broadcast_frame(verts);
@@ -163,8 +163,8 @@ void Server::handle_close(mg_connection* c) {
 void Server::send_frame(mg_connection* c) {
   log_crash("send_frame begin");
   std::vector<float> verts =
-      engine_.last_frame().empty() ? engine_.generate_frame()
-                                   : engine_.last_frame();
+      app_.last_frame().empty() ? app_.generate_frame()
+                                   : app_.last_frame();
 
   const std::string header = protocol::build_scene_update(verts.size() / 3);
   if (c && !c->is_closing) {
