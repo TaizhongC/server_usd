@@ -7,9 +7,9 @@ class Application;
 
 class Scene {
 public:
-  explicit Scene(Application& engine) : engine_(engine) {}
+  explicit Scene(Application& app) : app_(app) {}
   std::vector<std::string> layers() const;
 
 private:
-  Application& engine_;
+  Application& app_;
 };

@@ -42,9 +42,9 @@ int main() {
   std::signal(SIGINT, handle_signal);
   std::signal(SIGTERM, handle_signal);
 
-  Application engine;
+  Application app;
   Layout layout;
-  Scene scene(engine);
+  Scene scene(app);
 
   ServerConfig config;
   config.host = "0.0.0.0";
@@ -59,7 +59,7 @@ int main() {
             << config.port << std::endl;
   log_line("Application constructed");
 
-  Server server(config, engine, layout, scene);
+  Server server(config, app, layout, scene);
   if (!server.start()) {
     std::cerr << "Unable to start server\n";
     log_line("Server start failed");
