@@ -1,0 +1,19 @@
+{
+  "configurations": [
+    {
+      "name": "Default",
+      "intelliSenseMode": "windows-msvc-x64",
+      "includePath": [
+        "${workspaceFolder}/src",
+        "${workspaceFolder}/libs/json",
+        "${workspaceFolder}/libs/mongoose",
+        "${workspaceFolder}/libs/USD_Lite/include"
+      ],
+      "defines": [
+        "PXR_MONOLITHIC_BUILD",
+        "NOMINMAX"
+      ]
+    }
+  ],
+  "version": 4
+}
