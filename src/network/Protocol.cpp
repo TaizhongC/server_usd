@@ -26,6 +26,14 @@ std::string encode_layers(const std::vector<std::string>& layers) {
   return payload.dump();
 }
 
+std::string encode_stage_info(double meters_per_unit, const std::string& up_axis) {
+  json payload;
+  payload["cmd"] = "STAGE_INFO";
+  payload["meters_per_unit"] = meters_per_unit;
+  payload["up_axis"] = up_axis;
+  return payload.dump();
+}
+
 std::string encode_mesh_header(std::size_t vertex_count,
                                std::size_t face_count) {
   json payload;

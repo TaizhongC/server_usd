@@ -6,6 +6,8 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -24,6 +26,21 @@ void log_crash(const std::string& msg) {
   } catch (...) {
     // Best effort only.
   }
+}
+
+uint16_t ntohs_u16(uint16_t v) { return static_cast<uint16_t>((v >> 8) | (v << 8)); }
+
+std::string addr_to_string(const mg_addr& addr) {
+  if (!addr.is_ip6) {
+    const uint8_t* b = addr.ip;
+    const uint16_t port = ntohs_u16(addr.port);
+    std::ostringstream oss;
+    oss << static_cast<unsigned>(b[0]) << "." << static_cast<unsigned>(b[1]) << "."
+        << static_cast<unsigned>(b[2]) << "." << static_cast<unsigned>(b[3])
+        << ":" << port;
+    return oss.str();
+  }
+  return "[ipv6]";
 }
 }  // namespace
 
@@ -121,7 +138,7 @@ void Server::handle_event(mg_connection* c, int ev, void* ev_data) {
       self->handle_ws_msg(c, static_cast<mg_ws_message*>(ev_data));
       break;
     case MG_EV_CLOSE:
-      self->handle_close(c);
+      self->handle_ws_close(c);
       break;
     default:
       break;
@@ -140,9 +157,24 @@ void Server::handle_http(mg_connection* c, mg_http_message* hm) {
 }
 
 void Server::handle_ws_open(mg_connection* c) {
-  log_crash("WS open");
+  {
+    std::ostringstream oss;
+    auto now = std::chrono::system_clock::now();
+    auto t = std::chrono::system_clock::to_time_t(now);
+    const std::string addr = c ? addr_to_string(c->rem) : "unknown";
+    oss << "[WS] " << std::put_time(std::localtime(&t), "%F %T")
+        << " client connected from " << addr;
+    std::cout << oss.str() << std::endl;
+    log_crash(oss.str());
+  }
   clients_.push_back(c);
   send_ui_layout(c);
+  // Send stage metadata once.
+  const StageInfo stage_info = scene_.stage_info();
+  const std::string stage_msg =
+      protocol::encode_stage_info(stage_info.metersPerUnit, stage_info.upAxis);
+  mg_ws_send(c, stage_msg.c_str(), stage_msg.size(), WEBSOCKET_OP_TEXT);
+
   send_scene_layers(c);
   // Send the demo mesh on connect for quick testing.
   const auto snapshot = scene_.mesh_snapshot();
@@ -155,6 +187,22 @@ void Server::handle_ws_open(mg_connection* c) {
              reinterpret_cast<const char*>(verts.data()),
              verts.size() * sizeof(float),
              WEBSOCKET_OP_BINARY);
+}
+
+void Server::handle_ws_close(mg_connection* c) {
+  {
+    std::ostringstream oss;
+    auto now = std::chrono::system_clock::now();
+    auto t = std::chrono::system_clock::to_time_t(now);
+    const std::string addr = c ? addr_to_string(c->rem) : "unknown";
+    oss << "[WS] " << std::put_time(std::localtime(&t), "%F %T")
+        << " client disconnected from " << addr;
+    std::cout << oss.str() << std::endl;
+    log_crash(oss.str());
+  }
+  clients_.erase(
+      std::remove(clients_.begin(), clients_.end(), c),
+      clients_.end());
 }
 
 void Server::handle_ws_msg(mg_connection* c, mg_ws_message* msg) {
@@ -183,13 +231,6 @@ void Server::handle_ws_msg(mg_connection* c, mg_ws_message* msg) {
   } catch (...) {
     log_crash("WS msg unknown exception");
   }
-}
-
-void Server::handle_close(mg_connection* c) {
-  log_crash("WS close");
-  clients_.erase(
-      std::remove(clients_.begin(), clients_.end(), c),
-      clients_.end());
 }
 
 void Server::send_ui_layout(mg_connection* c) {

@@ -18,6 +18,11 @@ struct PrimDelta {
   std::vector<pxr::TfToken> attrs_changed;
 };
 
+struct StageInfo {
+  double metersPerUnit = 1.0;
+  std::string upAxis = "Z";
+};
+
 struct MeshSnapshot {
   std::vector<float> points;           // flattened xyz
   std::vector<int> faceVertexCounts;   // polygon counts
@@ -34,6 +39,7 @@ public:
                               const std::vector<pxr::TfToken>& attrs);
   std::vector<PrimDelta> poll_deltas();
   MeshSnapshot mesh_snapshot() const;
+  StageInfo stage_info() const;
 
 private:
   struct TokenHash {

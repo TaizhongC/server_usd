@@ -33,7 +33,7 @@ private:
   void handle_http(mg_connection* c, mg_http_message* hm);
   void handle_ws_open(mg_connection* c);
   void handle_ws_msg(mg_connection* c, mg_ws_message* msg);
-  void handle_close(mg_connection* c);
+  void handle_ws_close(mg_connection* c);
   void send_ui_layout(mg_connection* c);
   void send_scene_layers(mg_connection* c);
 

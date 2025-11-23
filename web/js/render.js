@@ -14,6 +14,8 @@ let layerMap = new Map(); // path string -> mesh
 let highlightedMesh = null;
 let highlightedLayerPath = null;
 let pickHandler = null;
+let stageUpAxis = 'Z';
+let stageMetersPerUnit = 1.0;
 
 function createRenderer() {
   const canvas = document.createElement('canvas');
@@ -35,6 +37,7 @@ function createScene() {
     100
   );
   camera.position.set(1.5, 1.2, 1.6);
+  camera.up.set(0, 0, 1); // Z-up to match stage
   camera.lookAt(0, 0, 0);
 
   controls = new OrbitControls(camera, renderer.domElement);
@@ -96,7 +99,14 @@ export function initRenderer() {
 export function updateMesh(path, vertices) {
   if (!geometry) return;
 
-  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+  // Apply units: scale geometry into meters if needed.
+  const scale = stageMetersPerUnit !== 0 ? stageMetersPerUnit : 1.0;
+  const scaled = new Float32Array(vertices.length);
+  for (let i = 0; i < vertices.length; ++i) {
+    scaled[i] = vertices[i] * scale;
+  }
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(scaled, 3));
   geometry.setIndex(null); // non-indexed triangle soup
   geometry.setDrawRange(0, vertices.length / 3);
   geometry.computeVertexNormals();
@@ -162,4 +172,15 @@ export function highlightLayer(path) {
 
 export function setPickHandler(cb) {
   pickHandler = cb;
+}
+
+export function setStageMetadata(upAxis, metersPerUnit) {
+  stageUpAxis = upAxis || 'Z';
+  stageMetersPerUnit = metersPerUnit || 1.0;
+  if (stageUpAxis === 'Y') {
+    camera.up.set(0, 1, 0);
+  } else {
+    camera.up.set(0, 0, 1);
+  }
+  controls && controls.update();
 }

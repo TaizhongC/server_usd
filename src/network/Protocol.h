@@ -29,6 +29,7 @@ std::optional<Command> parse_command(const std::string& text);
 
 // Outbound encoders.
 std::string encode_layers(const std::vector<std::string>& layers);
+std::string encode_stage_info(double meters_per_unit, const std::string& up_axis);
 std::string encode_mesh_header(std::size_t vertex_count,
                                std::size_t face_count);
 std::string encode_mesh_payload(const MeshPayload& mesh);

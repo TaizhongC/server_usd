@@ -13,6 +13,8 @@ Scene::Scene() {
   try {
     stage_ = pxr::UsdStage::CreateInMemory();
     if (stage_) {
+      stage_->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::TfToken("Z")));
+      stage_->SetMetadata(pxr::UsdGeomTokens->metersPerUnit, pxr::VtValue(1.0));
       stage_->DefinePrim(pxr::SdfPath("/World"), pxr::TfToken("Xform"));
       stage_->SetDefaultPrim(stage_->GetPrimAtPath(pxr::SdfPath("/World")));
 
@@ -122,4 +124,20 @@ MeshSnapshot Scene::mesh_snapshot() const {
     snapshot.displayColor.push_back(c[2]);
   }
   return snapshot;
+}
+
+StageInfo Scene::stage_info() const {
+  StageInfo info;
+  if (!stage_) return info;
+  double meters = 1.0;
+  if (stage_->HasAuthoredMetadata(pxr::UsdGeomTokens->metersPerUnit)) {
+    stage_->GetMetadata(pxr::UsdGeomTokens->metersPerUnit, &meters);
+  }
+  info.metersPerUnit = meters;
+  pxr::TfToken up;
+  if (stage_->HasAuthoredMetadata(pxr::UsdGeomTokens->upAxis)) {
+    stage_->GetMetadata(pxr::UsdGeomTokens->upAxis, &up);
+  }
+  info.upAxis = up.IsEmpty() ? std::string("Z") : up.GetString();
+  return info;
 }

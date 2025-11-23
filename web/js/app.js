@@ -1,4 +1,4 @@
-import { initRenderer, updateMesh, highlightLayer, setPickHandler } from './render.js';
+import { initRenderer, updateMesh, highlightLayer, setPickHandler, setStageMetadata } from './render.js';
 import { createClient } from './net.js';
 import { createUi } from './ui.js';
 
@@ -36,6 +36,10 @@ function handleText(text) {
 
   if (parsed.cmd === 'UI_BUILD') {
     // UI is static for now.
+  } else if (parsed.cmd === 'STAGE_INFO') {
+    const upAxis = parsed.up_axis || 'Z';
+    const meters = parsed.meters_per_unit || 1.0;
+    setStageMetadata(upAxis, meters);
   } else if (parsed.cmd === 'SCENE_UPDATE') {
     pendingHeader = parsed;
   } else if (parsed.cmd === 'UI_ACK') {
