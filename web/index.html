@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>zspace_web</title>
+  <link rel="icon" href="data:,">
   <style>
     * { box-sizing: border-box; }
     body {
@@ -92,6 +93,14 @@
     <div><strong>zspace_web</strong></div>
     <div id="status">Connecting...</div>
   </div>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/examples/jsm/controls/OrbitControls.js": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js"
+      }
+    }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19"></script>
   <script type="module" src="./js/app.js"></script>
 </body>
