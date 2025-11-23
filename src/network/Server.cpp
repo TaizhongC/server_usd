@@ -9,12 +9,9 @@
 #include <string>
 #include <vector>
 
-#include <nlohmann/json.hpp>
-
 #include "core/Scene.h"
+#include "network/Protocol.h"
 #include "ui/Layout.h"
-
-using json = nlohmann::json;
 
 namespace {
 void log_crash(const std::string& msg) {
@@ -121,12 +118,22 @@ void Server::handle_ws_msg(mg_connection* c, mg_ws_message* msg) {
   try {
     std::string payload(msg->data.buf, msg->data.len);
     log_crash(std::string("WS msg: ") + payload);
-    auto parsed = json::parse(payload, nullptr, false);
-    if (parsed.is_discarded()) return;
+    auto cmd = protocol::parse_command(payload);
+    if (!cmd.has_value()) return;
 
-    const std::string action = parsed.value("action", "");
-    if (action == "request_layers" || action == "layers") {
-      send_scene_layers(c);
+    switch (cmd->type) {
+      case protocol::CommandType::RequestLayers:
+        send_scene_layers(c);
+        {
+          const std::string ack = protocol::encode_ack(cmd->action);
+          mg_ws_send(c, ack.c_str(), ack.size(), WEBSOCKET_OP_TEXT);
+        }
+        break;
+      case protocol::CommandType::Unknown: {
+        const std::string text = protocol::encode_error("unknown_action");
+        mg_ws_send(c, text.c_str(), text.size(), WEBSOCKET_OP_TEXT);
+        break;
+      }
     }
   } catch (const std::exception& e) {
     log_crash(std::string("WS msg exception: ") + e.what());
@@ -151,10 +158,7 @@ void Server::send_ui_layout(mg_connection* c) {
 
 void Server::send_scene_layers(mg_connection* c) {
   if (!c || c->is_closing) return;
-  json payload;
-  payload["cmd"] = "SCENE_LAYERS";
-  payload["layers"] = scene_.layers();
-  const std::string text = payload.dump();
+  const std::string text = protocol::encode_layers(scene_.layers());
   mg_ws_send(c, text.c_str(), text.size(), WEBSOCKET_OP_TEXT);
 }
 

@@ -7,8 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-option(ENABLE_USD_LITE "Link against libs/USD_Lite if present" ON)
-
 # Third-party single-file libraries
 add_library(mongoose STATIC libs/mongoose/mongoose.c)
 target_include_directories(mongoose PUBLIC ${CMAKE_SOURCE_DIR}/libs/mongoose)
@@ -44,30 +42,24 @@ else()
   target_link_libraries(server_usd PRIVATE pthread)
 endif()
 
-# Optional USD_Lite linkage (requires libs/USD_Lite with pre-built binaries)
-if(ENABLE_USD_LITE)
-  set(USD_ROOT "${CMAKE_SOURCE_DIR}/libs/USD_Lite")
-  if(EXISTS "${USD_ROOT}/include" AND EXISTS "${USD_ROOT}/lib")
-    set(USD_BIN_DIR "${USD_ROOT}/bin")
-    set(USD_LIB_BIN "${USD_ROOT}/lib")
-    target_include_directories(server_usd PRIVATE ${USD_ROOT}/include)
-    target_link_directories(server_usd PRIVATE ${USD_ROOT}/lib)
-    target_compile_definitions(server_usd PRIVATE PXR_MONOLITHIC_BUILD NOMINMAX HAS_USD_LITE=1)
-    target_link_libraries(server_usd PRIVATE usd_ms)
+# USD_Lite linkage (required)
+set(USD_ROOT "${CMAKE_SOURCE_DIR}/libs/USD_Lite")
+set(USD_BIN_DIR "${USD_ROOT}/bin")
+set(USD_LIB_BIN "${USD_ROOT}/lib")
+target_include_directories(server_usd PRIVATE ${USD_ROOT}/include)
+target_link_directories(server_usd PRIVATE ${USD_ROOT}/lib)
+target_compile_definitions(server_usd PRIVATE PXR_MONOLITHIC_BUILD NOMINMAX)
+target_link_libraries(server_usd PRIVATE usd_ms)
 
-    add_custom_command(TARGET server_usd POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      "${USD_BIN_DIR}/usd_ms.dll"
-      "${USD_BIN_DIR}/tbb.dll"
-      "${USD_BIN_DIR}/tbbmalloc.dll"
-      $<TARGET_FILE_DIR:server_usd>
-    )
-    add_custom_command(TARGET server_usd POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_directory
-      "${USD_LIB_BIN}/usd"
-      "$<TARGET_FILE_DIR:server_usd>/usd"
-    )
-  else()
-    message(WARNING "USD_Lite not found under vendor/USD_Lite; building without USD.")
-  endif()
-endif()
+add_custom_command(TARGET server_usd POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+  "${USD_BIN_DIR}/usd_ms.dll"
+  "${USD_BIN_DIR}/tbb.dll"
+  "${USD_BIN_DIR}/tbbmalloc.dll"
+  $<TARGET_FILE_DIR:server_usd>
+)
+add_custom_command(TARGET server_usd POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+  "${USD_LIB_BIN}/usd"
+  "$<TARGET_FILE_DIR:server_usd>/usd"
+)
