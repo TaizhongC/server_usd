@@ -14,7 +14,6 @@
 #include <windows.h>
 #endif
 
-#include "core/Application.h"
 #include "core/Scene.h"
 #include "network/Server.h"
 #include "ui/Layout.h"
@@ -42,9 +41,8 @@ int main() {
   std::signal(SIGINT, handle_signal);
   std::signal(SIGTERM, handle_signal);
 
-  Application app;
   Layout layout;
-  Scene scene(app);
+  Scene scene;
 
   ServerConfig config;
   config.host = "0.0.0.0";
@@ -57,9 +55,9 @@ int main() {
 
   std::cout << "Starting server at http://" << config.host << ":"
             << config.port << std::endl;
-  log_line("Application constructed");
+  log_line("Scene constructed");
 
-  Server server(config, app, layout, scene);
+  Server server(config, layout, scene);
   if (!server.start()) {
     std::cerr << "Unable to start server\n";
     log_line("Server start failed");

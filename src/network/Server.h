@@ -9,7 +9,6 @@
 #undef sleep  // Avoid conflict with tbb/Windows Sleep usage in USD headers.
 #endif
 
-class Application;
 class Layout;
 class Scene;
 
@@ -21,7 +20,7 @@ struct ServerConfig {
 
 class Server {
 public:
-  Server(ServerConfig config, Application& app, const Layout& layout, const Scene& scene);
+  Server(ServerConfig config, const Layout& layout, const Scene& scene);
   ~Server();
 
   bool start();
@@ -35,15 +34,12 @@ private:
   void handle_ws_open(mg_connection* c);
   void handle_ws_msg(mg_connection* c, mg_ws_message* msg);
   void handle_close(mg_connection* c);
-  void send_frame(mg_connection* c);
   void send_ui_layout(mg_connection* c);
   void send_scene_layers(mg_connection* c);
-  void broadcast_frame(const std::vector<float>& vertices);
 
   std::string websocket_address() const;
 
   ServerConfig config_;
-  Application& app_;
   const Layout& layout_;
   const Scene& scene_;
 

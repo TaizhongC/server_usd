@@ -11,9 +11,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "core/Application.h"
 #include "core/Scene.h"
-#include "network/Protocol.h"
 #include "ui/Layout.h"
 
 using json = nlohmann::json;
@@ -32,9 +30,8 @@ void log_crash(const std::string& msg) {
 }
 }  // namespace
 
-Server::Server(ServerConfig config, Application& app, const Layout& layout, const Scene& scene)
+Server::Server(ServerConfig config, const Layout& layout, const Scene& scene)
     : config_(std::move(config)),
-      app_(app),
       layout_(layout),
       scene_(scene),
       listener_(nullptr),
@@ -117,7 +114,6 @@ void Server::handle_ws_open(mg_connection* c) {
   log_crash("WS open");
   clients_.push_back(c);
   send_ui_layout(c);
-  send_frame(c);
   send_scene_layers(c);
 }
 
@@ -129,22 +125,8 @@ void Server::handle_ws_msg(mg_connection* c, mg_ws_message* msg) {
     if (parsed.is_discarded()) return;
 
     const std::string action = parsed.value("action", "");
-
-    if (action == "generate") {
-      auto verts = app_.generate_frame();
-      const std::string ack = protocol::build_ack(action);
-      mg_ws_send(c, ack.c_str(), ack.size(), WEBSOCKET_OP_TEXT);
-      broadcast_frame(verts);
-    } else if (action == "speed") {
-      const double v = parsed.value("value", 1.0);
-      app_.set_speed(static_cast<float>(v));
-      auto verts = app_.generate_frame();  // Immediately reflect new speed.
-      const std::string ack = protocol::build_ack(action);
-      mg_ws_send(c, ack.c_str(), ack.size(), WEBSOCKET_OP_TEXT);
-      broadcast_frame(verts);
-    } else {
-      const std::string ack = protocol::build_ack("unknown_action");
-      mg_ws_send(c, ack.c_str(), ack.size(), WEBSOCKET_OP_TEXT);
+    if (action == "request_layers" || action == "layers") {
+      send_scene_layers(c);
     }
   } catch (const std::exception& e) {
     log_crash(std::string("WS msg exception: ") + e.what());
@@ -158,41 +140,6 @@ void Server::handle_close(mg_connection* c) {
   clients_.erase(
       std::remove(clients_.begin(), clients_.end(), c),
       clients_.end());
-}
-
-void Server::send_frame(mg_connection* c) {
-  log_crash("send_frame begin");
-  std::vector<float> verts =
-      app_.last_frame().empty() ? app_.generate_frame()
-                                   : app_.last_frame();
-
-  const std::string header = protocol::build_scene_update(verts.size() / 3);
-  if (c && !c->is_closing) {
-    log_crash("send_frame header send");
-    mg_ws_send(c, header.c_str(), header.size(), WEBSOCKET_OP_TEXT);
-    log_crash("send_frame binary send");
-    mg_ws_send(c,
-               reinterpret_cast<const char*>(verts.data()),
-               verts.size() * sizeof(float),
-               WEBSOCKET_OP_BINARY);
-  }
-  log_crash("send_frame end");
-}
-
-void Server::broadcast_frame(const std::vector<float>& vertices) {
-  log_crash("broadcast_frame begin: clients=" + std::to_string(clients_.size()));
-  const std::string header = protocol::build_scene_update(vertices.size() / 3);
-  for (auto* client : clients_) {
-    if (client == nullptr || client->is_closing) continue;
-    log_crash("broadcast_frame header send");
-    mg_ws_send(client, header.c_str(), header.size(), WEBSOCKET_OP_TEXT);
-    log_crash("broadcast_frame binary send");
-    mg_ws_send(client,
-               reinterpret_cast<const char*>(vertices.data()),
-               vertices.size() * sizeof(float),
-               WEBSOCKET_OP_BINARY);
-  }
-  log_crash("broadcast_frame end");
 }
 
 void Server::send_ui_layout(mg_connection* c) {
